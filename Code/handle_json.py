@@ -36,7 +36,7 @@ class HandleJson:
         except Exception as exc:
             raise RuntimeError(f"Erreur lors de la lecture du fichier JSON : {exc}") from exc
         
-    def get_interpreters(self) -> dict[str, list[str]]:
+    def get_interpreters(self) -> list[str]:
         """
         Getter pour la liste des interprètes.
         
@@ -45,7 +45,7 @@ class HandleJson:
         return self._interpreters
 
 
-    def get_sessions(self) -> dict[str, list[str]]:
+    def get_sessions(self) -> list[str]:
         """
         Getter pour la liste des __sessions.
         
@@ -54,7 +54,7 @@ class HandleJson:
         return self._sessions
 
 
-    def get_interpreters_lang(self) -> list[str]:
+    def get_interpreters_lang(self) ->dict[str, list[str]]:
         """
         Getter for the interpreters' languages.
         
@@ -62,7 +62,7 @@ class HandleJson:
         """
         return self._interpreters_lang
 
-    def get_sessions_blocks(self) -> list[str]:
+    def get_sessions_blocks(self) -> dict[str, list[str]]:
         """
         Getter for the sessions blocks.
         
@@ -78,7 +78,7 @@ class HandleJson:
         """
         return self._blocks
 
-    def get_languages(self) -> dict[str, list[str]]:
+    def get_languages(self) -> list[str]:
         """
         Getter for the languages.
         
