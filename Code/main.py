@@ -4,6 +4,7 @@ Main of the project
 Authors:  
     - Fatima Ouchen - 000548670 - MA1-INFO
     - Rodolphe Prévot - 000550332 - MA1-INFO
+    - Chahine Mabrouk Bouzouita - 000495542 - MA1-IRCI
 Datum: 16/06/2025
 """
 import gurobipy as gp

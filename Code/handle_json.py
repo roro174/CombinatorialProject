@@ -4,6 +4,7 @@ handle all the json data
 Authors:  
     - Fatima Ouchen - 000548670 - MA1-INFO
     - Rodolphe Prévot - 000550332 - MA1-INFO
+    - Chahine Mabrouk Bouzouita - 000495542 - MA1-IRCI
 Datum: 16/06/2025
 """
 
@@ -21,6 +22,7 @@ class HandleJson:
         self._languages = self._json_dic['Languages']
         self._sessions_lang = self._json_dic['Languages_s']
 
+   
     def __read_json(self, file_path: str) -> dict:
         """
         Lit le contenu d'un fichier JSON  et le retourne sous forme de dictionnaire.
@@ -30,9 +32,10 @@ class HandleJson:
         """
         try:
             with open(file_path, 'r', encoding='utf-8') as file:
-                return jsoupplyoprror(f"Erreur lors de la lecture du fichier JSON : {exc}") from exc
-
-
+                return json.load(file)
+        except Exception as exc:
+            raise RuntimeError(f"Erreur lors de la lecture du fichier JSON : {exc}") from exc
+        
     def get_interpreters(self) -> dict[str, list[str]]:
         """
         Getter pour la liste des interprètes.
