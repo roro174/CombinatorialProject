@@ -14,7 +14,7 @@ import pandas as pd
 import os
 import json
 import sys
-
+from isp_model import ISPModel
 from handle_json import HandleJson
 
 def decision_variables(data):
@@ -37,8 +37,24 @@ def main():
         return
 
     file_path = sys.argv[1]
-    json_class = HandleJson(file_path)
+    
+    try:
+        # Charger les données JSON
+        data_handler = HandleJson(file_path)
 
+        # Créer le modèle
+        model = ISPModel(data_handler)
+
+        # Résoudre OF1
+        print(f"\n--- Résolution de OF1 pour {file_path} ---")
+        model.solve_OF1()
+        # Résoudre OF2
+        print(f"\n--- Résolution de OF2 pour {file_path} ---")
+        model.solve_OF2()
+
+
+    except Exception as e:
+        print(f"Erreur : {e}")
 
 if __name__ == "__main__":
     main()
