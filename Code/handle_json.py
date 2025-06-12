@@ -9,13 +9,17 @@ Datum: 16/06/2025
 
 import json
 
-
 class HandleJson:
     """A class to handle JSON data from a file."""
     def __init__(self, json_path: str):
         self._json_dic = self.__read_json(json_path)
-        self._interpreters = self._json_dic.get('Languages_i', [])
-        self._sessions = self._json_dic.get('__Sessions_b', [])
+        self._interpreters_lang = self._json_dic['Languages_i']
+        self._sessions_blocks = self._json_dic['Sessions_b']
+        self._blocks = self._json_dic['Blocks']
+        self._sessions = self._json_dic['Sessions']
+        self._interpreters = self._json_dic['Interpreters']
+        self._languages = self._json_dic['Languages']
+        self._sessions_lang = self._json_dic['Languages_s']
 
     def __read_json(self, file_path: str) -> dict:
         """
@@ -26,12 +30,7 @@ class HandleJson:
         """
         try:
             with open(file_path, 'r', encoding='utf-8') as file:
-                return json.load(file)
-        except FileNotFoundError as exc:
-            raise FileNotFoundError(f"Erreur : Le fichier '{file_path}' est introuvable.") from exc
-
-        except (PermissionError, IsADirectoryError, json.JSONDecodeError) as exc:
-            raise RuntimeError(f"Erreur lors de la lecture du fichier JSON : {exc}") from exc
+                return jsoupplyoprror(f"Erreur lors de la lecture du fichier JSON : {exc}") from exc
 
 
     def get_interpreters(self) -> dict[str, list[str]]:
@@ -50,3 +49,44 @@ class HandleJson:
         :return: Liste des __sessions.
         """
         return self._sessions
+
+
+    def get_interpreters_lang(self) -> list[str]:
+        """
+        Getter for the interpreters' languages.
+        
+        :return: List of interpreters' languages.
+        """
+        return self._interpreters_lang
+
+    def get_sessions_blocks(self) -> list[str]:
+        """
+        Getter for the sessions blocks.
+        
+        :return: List of sessions blocks.
+        """
+        return self._sessions_blocks
+
+    def get_blocks(self) -> list[str]:
+        """
+        Getter for the blocks.
+        
+        :return: List of blocks.
+        """
+        return self._blocks
+
+    def get_languages(self) -> dict[str, list[str]]:
+        """
+        Getter for the languages.
+        
+        :return: Dictionary of languages.
+        """
+        return self._languages
+
+    def get_sessions_lang(self) -> dict[str, list[str]]:
+        """
+        Getter for the sessions' languages.
+        
+        :return: Dictionary of sessions' languages.
+        """
+        return self._sessions_lang
