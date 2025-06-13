@@ -15,24 +15,37 @@ from gurobipy import GRB
 
 class ISPModel:
     """A class to create the ISP model with all the variables and the constraints."""
-    def __init__(self, json_handler):
+    def __init__(self, json_handler, question2=False, bridge=False):
         self.data = json_handler
         self.model = gp.Model("ISP_Model")
         self.x = None  # x[i,s]: interpreter i assigned to session s
         self.y = None  # y[s,(l1,l2)]: pair (l1,l2) covered in session s
-        self.c = None  # c[s]: 1 if all pairs covered in session s
-        self._build_variables()
+        self.c =  None  # c[s]: 1 if all pairs covered in session s
+        self.w = None  # w[i,b]: interpreter i assigned to block b (only for question 2)
+        self._build_variables(question2)
         self._add_constraints()
+        if question2:
+            self._constraints_question2()
+        if bridge:
+            self._add_bridge()
 
-    def _build_variables(self):
+
+    def _add_bridge(self):
+        ...
+
+    def _build_variables(self, question2):
         """Build the variables for the model."""
         interpreters = self.data.get_interpreters()
         sessions = self.data.get_sessions()
+        blocks = self.data.get_blocks()
         sessions_lang = self.data.get_sessions_lang()
 
+        if question2:
+            self.w = self.model.addVars(interpreters, blocks, vtype=GRB.BINARY, name="w")
         self.x = self.model.addVars(interpreters, sessions, vtype=GRB.BINARY, name="x")
         self.y = {}
         self.c = self.model.addVars(sessions, vtype=GRB.BINARY, name="c")
+
 
         for s in sessions:
             langs = sessions_lang[s]
@@ -69,6 +82,45 @@ class ISPModel:
                     var >= self.c[s],
                     name=f"session_complete_{s}_{l1}_{l2}"
                 )
+
+
+    def _constraints_question2(self):
+        """Add the constraints for question 2."""
+        interpreters = self.data.get_interpreters()
+        sessions = self.data.get_sessions()
+        blocks = self.data.get_blocks()
+        sessions_b = self.data.get_sessions_blocks()
+
+        # Each interpreter can be assigned to at most Mi = 15 sessions
+        for i in interpreters:
+            self.model.addConstr(
+                gp.quicksum(self.x[i, s] for s in sessions) <= 15,
+                name=f"interpreter_one_session_{i}"
+            )
+
+     # if interpreter i is assigned to session s
+     # then it must be assigned to the block b of that session
+        for b in blocks:
+            for i in interpreters:
+                for s in sessions_b[b]:
+                    self.model.addConstr(
+                        self.w[i, b] >= self.x[i, s],
+                        name=f"lower_bound_{i}_{b}_{s}"
+                    )
+                self.model.addConstr(
+                    self.w[i, b] <= gp.quicksum(self.x[i, s] for s in sessions_b[b]),
+                    name=f"w_link_upper_{i}_{b}"
+                )
+
+        # each interpreter cannot work during more than CBi = 3 consecutive blocks
+        for i in interpreters:
+            for j in range(len(blocks) - 3):
+                self.model.addConstr(
+                    self.w[i, blocks[j]] + self.w[i, blocks[j+1]]
+                    + self.w[i, blocks[j+2]] + self.w[i, blocks[j+3]] <= 3,
+                    name=f"no_three_consecutive_blocks_{i}_{j}"
+                )
+
 
 
     def _set_objective_of1(self):
