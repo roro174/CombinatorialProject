@@ -7,26 +7,13 @@ Authors:
     - Chahine Mabrouk Bouzouita - 000495542 - MA1-IRCI
 Datum: 16/06/2025
 """
-import gurobipy as gp
-from gurobipy import GRB
-import numpy as np
-import pandas as pd
-import os
-import json
+
+
 import sys
 from isp_model import ISPModel
 from handle_json import HandleJson
 
-def decision_variables(data):
-    """
-    Crée les variables de décision pour le modèle Gurobi.
-    
-    :param data: Le modèle Gurobi.
-    """
 
-    assigned_inter = {}
-    assigned_inter_lang = {}
-    
 
 def main():
     """
@@ -37,7 +24,6 @@ def main():
         return
 
     file_path = sys.argv[1]
-    
     try:
         # Charger les données JSON
         data_handler = HandleJson(file_path)
@@ -47,13 +33,13 @@ def main():
 
         # Résoudre OF1
         print(f"\n--- Résolution de OF1 pour {file_path} ---")
-        model.solve_OF1()
+        model.solve_of(True, True)
         # Résoudre OF2
         print(f"\n--- Résolution de OF2 pour {file_path} ---")
-        model.solve_OF2()
+        model.solve_of(True, False)
 
 
-    except Exception as e:
+    except (FileNotFoundError, ValueError, KeyError) as e:
         print(f"Erreur : {e}")
 
 if __name__ == "__main__":

@@ -1,16 +1,31 @@
-import gurobipy as gp
-from gurobipy import GRB
+"""
+Project of Combinatorial Optimization: ISP problem
+Class for the ISP problem model
+Authors:  
+    - Fatima Ouchen - 000548670 - MA1-INFO
+    - Rodolphe Prévot - 000550332 - MA1-INFO
+    - Chahine Mabrouk Bouzouita - 000495542 - MA1-IRCI
+Datum: 16/06/2025
+"""
+
 from itertools import combinations
 
+import gurobipy as gp
+from gurobipy import GRB
+
 class ISPModel:
+    """A class to create the ISP model with all the variables and the constraints."""
     def __init__(self, json_handler):
         self.data = json_handler
         self.model = gp.Model("ISP_Model")
         self.x = None  # x[i,s]: interpreter i assigned to session s
         self.y = None  # y[s,(l1,l2)]: pair (l1,l2) covered in session s
         self.c = None  # c[s]: 1 if all pairs covered in session s
+        self._build_variables()
+        self._add_constraints()
 
-    def build_variables(self):
+    def _build_variables(self):
+        """Build the variables for the model."""
         interpreters = self.data.get_interpreters()
         sessions = self.data.get_sessions()
         sessions_lang = self.data.get_sessions_lang()
@@ -24,12 +39,11 @@ class ISPModel:
             for l1, l2 in combinations(langs, 2):
                 self.y[s, l1, l2] = self.model.addVar(vtype=GRB.BINARY, name=f"y_{s}_{l1}_{l2}")
 
-    def add_constraints(self):
+    def _add_constraints(self):
+        """Add the constraints to the model."""
         interpreters = self.data.get_interpreters()
         blocks = self.data.get_blocks()
         sessions_b = self.data.get_sessions_blocks()
-        sessions = self.data.get_sessions()
-        sessions_lang = self.data.get_sessions_lang()
         interpreters_lang = self.data.get_interpreters_lang()
 
         # One session per block per interpreter
@@ -41,34 +55,37 @@ class ISPModel:
                 )
 
         # Pair covered only if assigned interpreter knows both languages
-        for s in sessions:
-            langs = sessions_lang[s]
-            for l1, l2 in combinations(langs, 2):
-                eligible_i = [i for i in interpreters if l1 in interpreters_lang[i] and l2 in interpreters_lang[i]]
-                self.model.addConstr(
-                    self.y[s, l1, l2] <= gp.quicksum(self.x[i, s] for i in eligible_i),
-                    name=f"pair_covering_{s}_{l1}_{l2}"
-                )
+        for (s, l1, l2), var in self.y.items():
+            eligible_i = [i for i in interpreters if l1 in interpreters_lang[i] and
+                          l2 in interpreters_lang[i]]
+            self.model.addConstr(
+            var <= gp.quicksum(self.x[i, s] for i in eligible_i),
+            name=f"pair_covering_{s}_{l1}_{l2}"
+            )
 
         # Constraint: c_s = 1 if all pairs are covered
-        for s in sessions:
-            langs = sessions_lang[s]
-            for l1, l2 in combinations(langs, 2):
-                self.model.addConstr(
-                    self.y[s, l1, l2] >= self.c[s],
+        for (s, l1, l2), var in self.y.items():
+            self.model.addConstr(
+                    var >= self.c[s],
                     name=f"session_complete_{s}_{l1}_{l2}"
                 )
 
-    def set_objective_OF1(self):
+
+    def _set_objective_of1(self):
+        """Set the objective function OF1: maximize the number of covered language pairs."""
         self.model.setObjective(gp.quicksum(self.y.values()), GRB.MAXIMIZE)
 
-    def set_objective_OF2(self):
+    def _set_objective_of2(self):
+        """Set the objective function OF2: maximize the number of sessions fully covered."""
         self.model.setObjective(gp.quicksum(self.c.values()), GRB.MAXIMIZE)
 
-    def solve_OF1(self, verbose=True):
-        self.build_variables()
-        self.add_constraints()
-        self.set_objective_OF1()
+    def solve_of(self, verbose=True, use_of1=True):
+        """Solve the model using OF1 or OF2.
+        :param verbose: If True, print the results.
+        :param use_of1: If True, use objective function OF1, otherwise use OF2."""
+        if use_of1:
+            self._set_objective_of1()
+        else: self._set_objective_of2()
         self.model.optimize()
 
         if verbose:
@@ -77,32 +94,19 @@ class ISPModel:
                 if var.X > 0.5:
                     print(f"Interpreter {i} assigned to Session {s}")
 
-            print("\nCovered language pairs:")
-            for (s, l1, l2), var in self.y.items():
-                if var.X > 0.5:
-                    print(f"Session {s} covers pair ({l1}, {l2})")
+            if use_of1:
+                print("\nCovered language pairs:")
+                for (s, l1, l2), var in self.y.items():
+                    if var.X > 0.5:
+                        print(f"Session {s} covers pair ({l1}, {l2})")
 
-            print("\nTotal pairs covered (OF1):", self.model.ObjVal)
+                print("\nTotal pairs covered (OF1):", self.model.ObjVal)
+            else:
+                print("\nSessions fully covered:")
+                for s, var in self.c.items():
+                    if var.X > 0.5:
+                        print(f"Session {s} is fully covered")
 
-        return self.model.ObjVal
-
-    def solve_OF2(self, verbose=True):
-        self.build_variables()
-        self.add_constraints()
-        self.set_objective_OF2()
-        self.model.optimize()
-
-        if verbose:
-            print("\nSelected assignments:")
-            for (i, s), var in self.x.items():
-                if var.X > 0.5:
-                    print(f"Interpreter {i} assigned to Session {s}")
-
-            print("\nSessions fully covered:")
-            for s, var in self.c.items():
-                if var.X > 0.5:
-                    print(f"Session {s} is fully covered")
-
-            print("\nTotal sessions fully covered (OF2):", self.model.ObjVal)
+                print("\nTotal sessions fully covered (OF2):", self.model.ObjVal)
 
         return self.model.ObjVal

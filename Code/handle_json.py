@@ -22,7 +22,6 @@ class HandleJson:
         self._languages = self._json_dic['Languages']
         self._sessions_lang = self._json_dic['Languages_s']
 
-   
     def __read_json(self, file_path: str) -> dict:
         """
         Lit le contenu d'un fichier JSON  et le retourne sous forme de dictionnaire.
@@ -35,7 +34,7 @@ class HandleJson:
                 return json.load(file)
         except Exception as exc:
             raise RuntimeError(f"Erreur lors de la lecture du fichier JSON : {exc}") from exc
-        
+
     def get_interpreters(self) -> list[str]:
         """
         Getter pour la liste des interprètes.
