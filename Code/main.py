@@ -29,7 +29,7 @@ def main():
         data_handler = HandleJson(file_path)
 
         # Créer le modèle
-        model = ISPModel(data_handler, question2=True, bridge=False)
+        model = ISPModel(data_handler, question2=False, bridge=False)
 
         # Résoudre OF1
         print(f"\n--- Résolution de OF1 pour {file_path} ---")
