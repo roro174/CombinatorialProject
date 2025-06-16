@@ -35,16 +35,6 @@ class ISPModel:
         self._build_variables(question2, bridge)
         self._add_constraints(question2, bridge)
 
-    def _bridge_constraints(self):
-        """Add the constraints for the bridge between languages."""
-        # Pair covered only if assigned interpreters know both l0 and interpreter 1 knows l1
-        for (i, j, s, l0, l1, l2), var in self.z.items():
-            # i doit être assigné à s et connaître l1 et l0
-            self.model.addConstr(var <= self.x[i, s],
-                                 name=f"bridge_assign_i_{i}_{j}_{s}_{l0}_{l1}_{l2}")
-            self.model.addConstr(var <= self.x[j, s],
-                                 name=f"bridge_assign_j_{i}_{j}_{s}_{l0}_{l1}_{l2}")
-
 
     def _build_variables(self, question2, bridge):
         """Build the variables for the model."""
@@ -71,6 +61,7 @@ class ISPModel:
 
 
     def _build_languages_variables(self, sessions, sessions_lang, interpreters, interpreters_lang):
+        """Build the variables for y."""
         # Build all pairs per session
         for s in sessions:
             langs = sessions_lang[s]
@@ -99,6 +90,7 @@ class ISPModel:
 
 
     def _build_bridges_variables(self, sessions, interpreters, interpreters_lang):
+        """Build the variables for the bridges between languages."""
         self.z = {}
         for s in sessions:
             for l1, l2 in self.all_pairs_in_session[s]:
@@ -189,6 +181,7 @@ class ISPModel:
 
     def _constraints_session_coverage(self, sessions, sessions_lang):
         """Add the constraints for the session coverage."""
+
         for s in sessions:
             for lang in sessions_lang[s]:
                 sum_y = gp.quicksum(
@@ -216,7 +209,7 @@ class ISPModel:
 
             # Contrainte de couverture complète de la session
             self.model.addConstr(
-                gp.quicksum(self.u[s, lang] for lang in sessions_lang[s]) 
+                gp.quicksum(self.u[s, lang] for lang in sessions_lang[s])
                 >= len(sessions_lang[s]) * self.c[s],
                 name=f"session_covered_{s}"
             )
@@ -258,6 +251,16 @@ class ISPModel:
                     + self.w[i, blocks[j+2]] + self.w[i, blocks[j+3]] <= 3,
                     name=f"no_three_consecutive_blocks_{i}_{j}"
                 )
+
+    def _bridge_constraints(self):
+        """Add the constraints for the bridge between languages."""
+        # Pair covered only if assigned interpreters know both l0 and interpreter 1 knows l1
+        for (i, j, s, l0, l1, l2), var in self.z.items():
+            # i doit être assigné à s et connaître l1 et l0
+            self.model.addConstr(var <= self.x[i, s],
+                                 name=f"bridge_assign_i_{i}_{j}_{s}_{l0}_{l1}_{l2}")
+            self.model.addConstr(var <= self.x[j, s],
+                                 name=f"bridge_assign_j_{i}_{j}_{s}_{l0}_{l1}_{l2}")
 
 
 
