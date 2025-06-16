@@ -17,7 +17,7 @@ from handle_json import HandleJson
 
 def main():
     """
-    Fonction principale du programme.
+    main of the program.
     """
     if len(sys.argv) != 4:
         print("Usage : python3 main.py "
