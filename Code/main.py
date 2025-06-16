@@ -20,7 +20,7 @@ def main():
     Fonction principale du programme.
     """
     if len(sys.argv) != 4:
-        print("Usage : python main.py <chemin_du_fichier_json>, question 2 (True/False), bridge (True/False)")
+        print("Usage : python3 main.py <chemin_du_fichier_json>, question 2 (True/False), bridge (True/False)")
         return
 
     file_path = sys.argv[1]

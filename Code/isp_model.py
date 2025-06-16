@@ -30,24 +30,11 @@ class ISPModel:
 
     def _bridge_constraints(self):
         """Add the constraints for the bridge between languages."""
-        interpreters = self.data.get_interpreters()
-        sessions = self.data.get_sessions()
-
         # Pair covered only if assigned interpreters know both l0 and interpreter 1 knows l1
         for (i, j, s, l0, l1, l2), var in self.z.items():
             # i doit être assigné à s et connaître l1 et l0
             self.model.addConstr(var <= self.x[i, s], name=f"bridge_assign_i_{i}_{j}_{s}_{l0}_{l1}_{l2}")
             self.model.addConstr(var <= self.x[j, s], name=f"bridge_assign_j_{i}_{j}_{s}_{l0}_{l1}_{l2}")
-
-                
-        # an interpreter cannot take both side of the same bridge
-        for s in sessions:
-            for i in interpreters:
-                self.model.addConstr(
-                    gp.quicksum(var for key, var in self.z.items() if (key[0] == i or key[1] == i) and key[2] == s) <= 1,
-                    name=f"interpreter_single_bridge_session_{i}_{s}"
-                )
-
         
 
     def _build_variables(self, question2, bridge):
@@ -117,7 +104,7 @@ class ISPModel:
         sessions_b = self.data.get_sessions_blocks()
         sessions = self.data.get_sessions()
         sessions_lang = self.data.get_sessions_lang()
-        self._constraints_interpreter(blocks, interpreters, sessions_b)
+        self._constraints_interpreter(blocks, interpreters, sessions_b, sessions)
         self._constraints_session(sessions, sessions_lang)
         if question2:
             self._constraints_question2()
@@ -126,7 +113,7 @@ class ISPModel:
 
 
 
-    def _constraints_interpreter(self, blocks, interpreters, sessions_b):
+    def _constraints_interpreter(self, blocks, interpreters, sessions_b, sessions):
         """Add the constraints for the interpreters."""
         # One session per block per interpreter
         for b in blocks:
@@ -136,33 +123,39 @@ class ISPModel:
                     name=f"one_session_per_block_{i}_{b}"
                 )
 
-        #problème ici
-        for (i, s), pairs in self.compatible_pairs.items():
-            expr = gp.quicksum(self.y[i, s, l1, l2] for (l1, l2) in pairs)
 
-            if self.z is not None:  # Si on est en mode bridge
-                expr += gp.quicksum(
-                    self.z[i, j, s, l0, l1, l2]
-                    for (i2, j, s2, l0, l1, l2) in self.z.keys() if i2 == i and s2 == s
-                )
-                expr += gp.quicksum(
-                    self.z[j, i, s, l0, l1, l2]
-                    for (j, i2, s2, l0, l1, l2) in self.z.keys() if i2 == i and s2 == s
+        for i in interpreters:
+            for s in sessions:
+                # Somme des y : paires compatibles pour cet interprète dans cette session
+                expr = gp.quicksum(
+                    self.y[i, s, l1, l2]
+                    for (l1, l2) in self.all_pairs_in_session[s]
+                    if (i, s) in self.compatible_pairs and (l1, l2) in self.compatible_pairs[(i, s)]
                 )
 
-            self.model.addConstr(expr == self.x[i, s], name=f"one_assignment_per_interpreter_{i}_{s}")
+                if self.z is not None:
+                    # Ajouter tous les z où l'interprète i intervient dans la session s
+                    expr += gp.quicksum(
+                        var for key, var in self.z.items() if (key[0] == i or key[1] == i) and key[2] == s
+                    )
+
+                self.model.addConstr(expr == self.x[i, s], name=f"one_assignment_per_interpreter_{i}_{s}")
 
     def _constraints_session(self, sessions, sessions_lang):
         """Add the constraints for the sessions."""
 
-
-        #problème ici aussi
         for s in sessions:
             for l1, l2 in self.all_pairs_in_session[s]:
                 if self.z is not None:  # Si on est en mode bridge
+                    sum_y = gp.quicksum(
+                        self.y[i, s, l1, l2] for i in self.interpreters_per_pair[s, l1, l2]
+                    )
+                    sum_z = gp.quicksum(
+                        var for key, var in self.z.items() if key[2] == s and key[4] == l1 and key[5] == l2
+                    )
+
                     self.model.addConstr(
-                        gp.quicksum(self.y[i, s, l1, l2] for i in self.interpreters_per_pair[s, l1, l2])
-                        + gp.quicksum(var for key, var in self.z.items() if key[2] == s and key[4] == l1 and key[5] == l2) <= 1,
+                        sum_y + sum_z <= 1,
                         name=f"one_interpreter_or_bridge_per_pair_{s}_{l1}_{l2}"
                     )
                 else:
