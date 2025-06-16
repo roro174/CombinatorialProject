@@ -19,8 +19,8 @@ def main():
     """
     Fonction principale du programme.
     """
-    if len(sys.argv) != 2:
-        print("Usage : python main.py <chemin_du_fichier_json>")
+    if len(sys.argv) != 4:
+        print("Usage : python main.py <chemin_du_fichier_json>, question 2 (True/False), bridge (True/False)")
         return
 
     file_path = sys.argv[1]
@@ -28,8 +28,11 @@ def main():
         # Charger les données JSON
         data_handler = HandleJson(file_path)
 
+        question2 = sys.argv[2].lower() == 'true'
+        bridge = sys.argv[3].lower() == 'true'
+
         # Créer le modèle
-        model = ISPModel(data_handler, question2=True, bridge=True)
+        model = ISPModel(data_handler, question2, bridge)
 
         # Résoudre OF1
         print(f"\n--- Résolution de OF1 pour {file_path} ---")
