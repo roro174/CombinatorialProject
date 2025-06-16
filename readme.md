@@ -30,4 +30,4 @@ Where:
 - `args[2]` = whether we want to add the constraints of the question 3 -> ["True", "False"]
 
 
-_example_: `python Code/main.py example.json True True`
+_example_: `python Code/main.py example.json False False`
