@@ -53,11 +53,14 @@ class ISPModel:
         sessions = self.data.get_sessions()
         blocks = self.data.get_blocks()
         sessions_lang = self.data.get_sessions_lang()
-        languages = self.data.get_languages()
 
         if question2:
             self.w = self.model.addVars(interpreters, blocks, vtype=GRB.BINARY, name="w")
-        self.u = self.model.addVars(sessions, languages, vtype=GRB.BINARY, name="u")
+        self.u = self.model.addVars(
+            [(s, lang) for s in sessions for lang in sessions_lang[s]],
+            vtype=GRB.BINARY,
+            name="u"
+        )
         self.x = self.model.addVars(interpreters, sessions, vtype=GRB.BINARY, name="x")
         self.y = {}
         self.c = self.model.addVars(sessions, vtype=GRB.BINARY, name="c")
@@ -187,38 +190,34 @@ class ISPModel:
     def _constraints_session_coverage(self, sessions, sessions_lang):
         """Add the constraints for the session coverage."""
         for s in sessions:
-            # find the languages covered in each session
             for lang in sessions_lang[s]:
-                if self.z is not None:  # Si bridges activés
+                sum_y = gp.quicksum(
+                    self.y[i, s, l1, l2]
+                    for (l1, l2) in self.all_pairs_in_session[s]
+                    if l1 == lang or l2 == lang
+                    for i in self.interpreters_per_pair[s, l1, l2]
+                )
+                
+                if self.z is not None:
+                    sum_z = gp.quicksum(
+                        var
+                        for (i, j, s2, l0, l1, l2), var in self.z.items()
+                        if s2 == s and (l1 == lang or l2 == lang)
+                    )
                     self.model.addConstr(
-                        gp.quicksum(
-                            self.y[i, s, l1, l2]
-                            for (l1, l2) in self.all_pairs_in_session[s]
-                            if l1 == lang or l2 == lang
-                            for i in self.interpreters_per_pair[s, l1, l2]
-                        )
-                        + gp.quicksum(
-                            var
-                            for (i, j, s2, l0, l1, l2), var in self.z.items()
-                            if s2 == s and (l1 == lang or l2 == lang)
-                        ) >= self.u[s, lang],
+                        sum_y + sum_z >= self.u[s, lang],
                         name=f"lang_covered_with_bridges_{s}_{lang}"
                     )
                 else:
                     self.model.addConstr(
-                        gp.quicksum(
-                            self.y[i, s, l1, l2]
-                            for (l1, l2) in self.all_pairs_in_session[s]
-                            if l1 == lang or l2 == lang
-                            for i in self.interpreters_per_pair[s, l1, l2]
-                        ) >= self.u[s, lang],
+                        sum_y >= self.u[s, lang],
                         name=f"lang_covered_{s}_{lang}"
                     )
 
-            # Each session is fully covered if all languages are covered
+            # Contrainte de couverture complète de la session
             self.model.addConstr(
-                gp.quicksum(self.u[s, lang]
-                            for lang in sessions_lang[s]) >= len(sessions_lang[s]) * self.c[s],
+                gp.quicksum(self.u[s, lang] for lang in sessions_lang[s]) 
+                >= len(sessions_lang[s]) * self.c[s],
                 name=f"session_covered_{s}"
             )
 

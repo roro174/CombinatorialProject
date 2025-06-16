@@ -37,10 +37,10 @@ def main():
 
         # Résoudre OF1
         print(f"\n--- Résolution de OF1 pour {file_path} ---")
-        model.solve_of(True, True)
+        model.solve_of(False, True)
         # Résoudre OF2
         print(f"\n--- Résolution de OF2 pour {file_path} ---")
-        model.solve_of(True, False)
+        model.solve_of(False, False)
 
 
     except (FileNotFoundError, ValueError, KeyError) as e:
