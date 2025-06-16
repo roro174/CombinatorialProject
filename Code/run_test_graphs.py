@@ -22,11 +22,11 @@ def run_test(json_file, question2, bridge):
     model = ISPModel(data_handler, question2, bridge)
 
     results = []
-    for of2 in [False, True]:  # False = OF1, True = OF2
-        objective_name = "OF2" if of2 else "OF1"
+    for of1 in [True, False]:  # True = OF1, False = OF2
+        objective_name = "OF1" if of1 else "OF2"
         model.model.setParam("TimeLimit", 600)
         start = time.time()
-        model.solve_of(verbose=False, of2=of2)
+        model.solve_of(verbose=False, use_of1=of1)
         end = time.time()
 
         runtime = round(end - start, 2)
