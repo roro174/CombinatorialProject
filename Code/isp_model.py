@@ -24,7 +24,14 @@ class ISPModel:
         self.y = None  # y[i,s,l1,l2]: pair (l1,l2) covered in session s and interpreter by i
         self.c =  None  # c[s]: 1 if all pairs covered in session s
         self.w = None  # w[i,b]: interpreter i assigned to block b (only for question 2)
-        self.z = None # Z[i, j,  s,l0, l1,l2]: bridge betwwen l1 and l2 by l0 in session s where i covered l0 and l1 and j covered l0 and l2(only for question 3)
+        self.z = None # Z[i, j,  s,l0, l1,l2]:
+                        #bridge betwwen l1 and l2 by l0 in session s where
+                        # i covered l0 and l1 and j covered l0 and l2(only for question 3)
+        self.compatible_pairs = dict() # contains all the pairs of languages
+                                        #that can be covered by an interpreter in a session
+        self.interpreters_per_pair = dict() # contains all the interpreters
+                                            #that can cover a pair of languages in a session
+        self.all_pairs_in_session = dict() # contains all the combinations of languages in a session
         self._build_variables(question2, bridge)
         self._add_constraints(question2, bridge)
 
@@ -33,9 +40,11 @@ class ISPModel:
         # Pair covered only if assigned interpreters know both l0 and interpreter 1 knows l1
         for (i, j, s, l0, l1, l2), var in self.z.items():
             # i doit être assigné à s et connaître l1 et l0
-            self.model.addConstr(var <= self.x[i, s], name=f"bridge_assign_i_{i}_{j}_{s}_{l0}_{l1}_{l2}")
-            self.model.addConstr(var <= self.x[j, s], name=f"bridge_assign_j_{i}_{j}_{s}_{l0}_{l1}_{l2}")
-        
+            self.model.addConstr(var <= self.x[i, s],
+                                 name=f"bridge_assign_i_{i}_{j}_{s}_{l0}_{l1}_{l2}")
+            self.model.addConstr(var <= self.x[j, s],
+                                 name=f"bridge_assign_j_{i}_{j}_{s}_{l0}_{l1}_{l2}")
+
 
     def _build_variables(self, question2, bridge):
         """Build the variables for the model."""
@@ -48,16 +57,17 @@ class ISPModel:
 
         if question2:
             self.w = self.model.addVars(interpreters, blocks, vtype=GRB.BINARY, name="w")
-        if bridge:
-            self.z = {}
         self.u = self.model.addVars(sessions, languages, vtype=GRB.BINARY, name="u")
         self.x = self.model.addVars(interpreters, sessions, vtype=GRB.BINARY, name="x")
         self.y = {}
         self.c = self.model.addVars(sessions, vtype=GRB.BINARY, name="c")
-        self.compatible_pairs = dict()
-        self.interpreters_per_pair = dict()
-        self.all_pairs_in_session = dict()
+        self._build_languages_variables(sessions, sessions_lang, interpreters, interpreters_lang)
+        if bridge:
+            self._build_bridges_variables(sessions, interpreters, interpreters_lang)
 
+
+
+    def _build_languages_variables(self, sessions, sessions_lang, interpreters, interpreters_lang):
         # Build all pairs per session
         for s in sessions:
             langs = sessions_lang[s]
@@ -73,7 +83,8 @@ class ISPModel:
                     self.compatible_pairs[i, s] = compatible
             for l1, l2 in self.all_pairs_in_session[s]:
                 self.interpreters_per_pair[s, l1, l2] = [
-                    i for i in interpreters if (i, s) in self.compatible_pairs and (l1, l2) in self.compatible_pairs[i, s]
+                    i for i in interpreters if (i, s)
+                    in self.compatible_pairs and (l1, l2) in self.compatible_pairs[i, s]
                 ]
 
         self.y = self.model.addVars(
@@ -83,19 +94,22 @@ class ISPModel:
             vtype=GRB.BINARY, name="y"
         )
 
-        if bridge:
-            for s in sessions:
-                for l1, l2 in self.all_pairs_in_session[s]:
-                    for i in interpreters:
-                        for j in interpreters:
-                            if i != j:
-                                # On regarde les langues communes entre i et j
-                                common_langs = set(interpreters_lang[i]).intersection(interpreters_lang[j])
-                                for l0 in common_langs:
-                                    self.z[i, j, s, l0, l1, l2] = self.model.addVar(
-                                        vtype=GRB.BINARY,
-                                        name=f"z_{i}_{j}_{s}_{l0}_{l1}_{l2}"
-                                    )
+
+    def _build_bridges_variables(self, sessions, interpreters, interpreters_lang):
+        self.z = {}
+        for s in sessions:
+            for l1, l2 in self.all_pairs_in_session[s]:
+                for i in interpreters:
+                    for j in interpreters:
+                        if i != j:
+                            # intesection betwwen interpreters languages
+                            common_langs = set(
+                                interpreters_lang[i]).intersection(interpreters_lang[j])
+                            for l0 in common_langs:
+                                self.z[i, j, s, l0, l1, l2] = self.model.addVar(
+                                    vtype=GRB.BINARY,
+                                    name=f"z_{i}_{j}_{s}_{l0}_{l1}_{l2}")
+
 
     def _add_constraints(self,question2, bridge):
         """Add the constraints to the model."""
@@ -105,7 +119,8 @@ class ISPModel:
         sessions = self.data.get_sessions()
         sessions_lang = self.data.get_sessions_lang()
         self._constraints_interpreter(blocks, interpreters, sessions_b, sessions)
-        self._constraints_session(sessions, sessions_lang)
+        self._constraints_session(sessions)
+        self._constraints_session_coverage(sessions, sessions_lang)
         if question2:
             self._constraints_question2()
         if bridge:
@@ -123,10 +138,9 @@ class ISPModel:
                     name=f"one_session_per_block_{i}_{b}"
                 )
 
-
+        # Each interpreter can be assigned to at most a single pair in a session
         for i in interpreters:
             for s in sessions:
-                # Somme des y : paires compatibles pour cet interprète dans cette session
                 expr = gp.quicksum(
                     self.y[i, s, l1, l2]
                     for (l1, l2) in self.all_pairs_in_session[s]
@@ -136,14 +150,17 @@ class ISPModel:
                 if self.z is not None:
                     # Ajouter tous les z où l'interprète i intervient dans la session s
                     expr += gp.quicksum(
-                        var for key, var in self.z.items() if (key[0] == i or key[1] == i) and key[2] == s
+                        var for key, var in self.z.items()
+                        if (key[0] == i or key[1] == i) and key[2] == s
                     )
 
-                self.model.addConstr(expr == self.x[i, s], name=f"one_assignment_per_interpreter_{i}_{s}")
+                self.model.addConstr(expr == self.x[i, s],
+                                     name=f"one_assignment_per_interpreter_{i}_{s}")
 
-    def _constraints_session(self, sessions, sessions_lang):
+    def _constraints_session(self, sessions):
         """Add the constraints for the sessions."""
 
+        #Each pair of language can be covered by at most one interpreter in a session
         for s in sessions:
             for l1, l2 in self.all_pairs_in_session[s]:
                 if self.z is not None:  # Si on est en mode bridge
@@ -151,7 +168,8 @@ class ISPModel:
                         self.y[i, s, l1, l2] for i in self.interpreters_per_pair[s, l1, l2]
                     )
                     sum_z = gp.quicksum(
-                        var for key, var in self.z.items() if key[2] == s and key[4] == l1 and key[5] == l2
+                        var for key, var in self.z.items()
+                        if key[2] == s and key[4] == l1 and key[5] == l2
                     )
 
                     self.model.addConstr(
@@ -160,10 +178,15 @@ class ISPModel:
                     )
                 else:
                     self.model.addConstr(
-                        gp.quicksum(self.y[i, s, l1, l2] for i in self.interpreters_per_pair[s, l1, l2]) <= 1,
+                        gp.quicksum(self.y[i, s, l1, l2]
+                                    for i in self.interpreters_per_pair[s, l1, l2]) <= 1,
                         name=f"one_interpreter_per_pair_{s}_{l1}_{l2}"
                     )
 
+
+    def _constraints_session_coverage(self, sessions, sessions_lang):
+        """Add the constraints for the session coverage."""
+        for s in sessions:
             # find the languages covered in each session
             for lang in sessions_lang[s]:
                 if self.z is not None:  # Si bridges activés
@@ -175,8 +198,8 @@ class ISPModel:
                             for i in self.interpreters_per_pair[s, l1, l2]
                         )
                         + gp.quicksum(
-                            self.z[i, j, s, l0, l1, l2]
-                            for (i, j, s2, l0, l1, l2) in self.z.keys()
+                            var
+                            for (i, j, s2, l0, l1, l2), var in self.z.items()
                             if s2 == s and (l1 == lang or l2 == lang)
                         ) >= self.u[s, lang],
                         name=f"lang_covered_with_bridges_{s}_{lang}"
@@ -194,7 +217,8 @@ class ISPModel:
 
             # Each session is fully covered if all languages are covered
             self.model.addConstr(
-                gp.quicksum(self.u[s, lang] for lang in sessions_lang[s]) >= len(sessions_lang[s]) * self.c[s],
+                gp.quicksum(self.u[s, lang]
+                            for lang in sessions_lang[s]) >= len(sessions_lang[s]) * self.c[s],
                 name=f"session_covered_{s}"
             )
 
@@ -241,7 +265,8 @@ class ISPModel:
     def _set_objective_of1(self):
         """Set the objective function OF1: maximize the number of covered language pairs."""
         if self.z is not None:
-            self.model.setObjective(gp.quicksum(self.y.values()) + gp.quicksum(self.z.values()), GRB.MAXIMIZE)
+            self.model.setObjective(gp.quicksum(self.y.values())
+                                     + gp.quicksum(self.z.values()), GRB.MAXIMIZE)
         else:
             self.model.setObjective(gp.quicksum(self.y.values()), GRB.MAXIMIZE)
 
@@ -273,8 +298,6 @@ class ISPModel:
                     for(i, j, s, l0, l1, l2), var in self.z.items():
                         if var.X > 0.5:
                             print(f"{i} on {s} covers bridge ({l1}, {l2}) with {j} using {l0}")
-                
-
                 print("\nTotal pairs covered (OF1):", self.model.ObjVal)
             else:
                 print("\nSessions fully covered:")
