@@ -24,31 +24,31 @@ class HandleJson:
 
     def __read_json(self, file_path: str) -> dict:
         """
-        Lit le contenu d'un fichier JSON  et le retourne sous forme de dictionnaire.
+        read the JSON file and put its content in dictionnaries.
         
-        :param file_path: Chemin vers le fichier JSON à lire.
-        :return: Contenu du fichier sous forme de dictionnaire.
+        :param file_path: path of the JSON file.
+        :return: a dictionary containing the JSON data.
         """
         try:
             with open(file_path, 'r', encoding='utf-8') as file:
                 return json.load(file)
         except Exception as exc:
-            raise RuntimeError(f"Erreur lors de la lecture du fichier JSON : {exc}") from exc
+            raise RuntimeError(f"Error in the lecture of the JSON file : {exc}") from exc
 
     def get_interpreters(self) -> list[str]:
         """
-        Getter pour la liste des interprètes.
+        Getter for the interpreter list.
         
-        :return: Liste des interprètes.
+        :return: interpreters list.
         """
         return self._interpreters
 
 
     def get_sessions(self) -> list[str]:
         """
-        Getter pour la liste des __sessions.
+        Getter for the sessions list.
         
-        :return: Liste des __sessions.
+        :return: sessions list.
         """
         return self._sessions
 

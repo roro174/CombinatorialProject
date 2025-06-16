@@ -26,19 +26,19 @@ def main():
 
     file_path = sys.argv[1]
     try:
-        # Charger les données JSON
+        # load the data from the JSON file
         data_handler = HandleJson(file_path)
 
         question2 = sys.argv[2].lower() == 'true'
         bridge = sys.argv[3].lower() == 'true'
 
-        # Créer le modèle
+        # xreate the ISPModel instance
         model = ISPModel(data_handler, question2, bridge)
 
-        # Résoudre OF1
+        # OF1
         print(f"\n--- Résolution de OF1 pour {file_path} ---")
         model.solve_of(False, True)
-        # Résoudre OF2
+        # OF2
         print(f"\n--- Résolution de OF2 pour {file_path} ---")
         model.solve_of(False, False)
 

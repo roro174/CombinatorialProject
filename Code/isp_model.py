@@ -254,7 +254,6 @@ class ISPModel:
         """Add the constraints for the bridge between languages."""
         # Pair covered only if interpreters are assigned to sessions s
         for (i, j, s, l0, l1, l2), var in self.z.items():
-            # i doit être assigné à s et connaître l1 et l0
             self.model.addConstr(var <= self.x[i, s],
                                  name=f"bridge_assign_i_{i}_{j}_{s}_{l0}_{l1}_{l2}")
             self.model.addConstr(var <= self.x[j, s],
