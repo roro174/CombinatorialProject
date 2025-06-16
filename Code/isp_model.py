@@ -143,7 +143,6 @@ class ISPModel:
                 )
 
                 if self.z is not None:
-                    # Ajouter tous les z où l'interprète i intervient dans la session s
                     expr += gp.quicksum(
                         var for key, var in self.z.items()
                         if (key[0] == i or key[1] == i) and key[2] == s
@@ -158,7 +157,7 @@ class ISPModel:
         #Each pair of language can be covered by at most one interpreter in a session
         for s in sessions:
             for l1, l2 in self.all_pairs_in_session[s]:
-                if self.z is not None:  # Si on est en mode bridge
+                if self.z is not None:
                     sum_y = gp.quicksum(
                         self.y[i, s, l1, l2] for i in self.interpreters_per_pair[s, l1, l2]
                     )
@@ -190,7 +189,6 @@ class ISPModel:
                     if l1 == lang or l2 == lang
                     for i in self.interpreters_per_pair[s, l1, l2]
                 )
-                
                 if self.z is not None:
                     sum_z = gp.quicksum(
                         var
@@ -207,7 +205,7 @@ class ISPModel:
                         name=f"lang_covered_{s}_{lang}"
                     )
 
-            # Contrainte de couverture complète de la session
+            # all the languages in a session must be covered
             self.model.addConstr(
                 gp.quicksum(self.u[s, lang] for lang in sessions_lang[s])
                 >= len(sessions_lang[s]) * self.c[s],
@@ -254,7 +252,7 @@ class ISPModel:
 
     def _bridge_constraints(self):
         """Add the constraints for the bridge between languages."""
-        # Pair covered only if assigned interpreters know both l0 and interpreter 1 knows l1
+        # Pair covered only if interpreters are assigned to sessions s
         for (i, j, s, l0, l1, l2), var in self.z.items():
             # i doit être assigné à s et connaître l1 et l0
             self.model.addConstr(var <= self.x[i, s],
