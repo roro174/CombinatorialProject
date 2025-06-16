@@ -26,8 +26,8 @@ To run the program:
 Where:
 
 - `args[0]` = path to the instance file
-- `args[1]` = ["True", "False"]
-- `args[2]` = ["True", "False"]
+- `args[1]` = whether we want to add the constraints of the question 2 -> ["True", "False"]
+- `args[2]` = whether we want to add the constraints of the question 3 -> ["True", "False"]
 
 
 _example_: `python Code/main.py example.json True True`
